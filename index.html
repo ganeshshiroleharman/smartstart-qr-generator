@@ -13,28 +13,19 @@
 <style>
 
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
+    font-family: Arial;
+    background: #f4f4f4;
     padding: 20px;
 }
 
 .container {
-    background-color: white;
+    background: white;
     padding: 20px;
-    max-width: 500px;
+    max-width: 600px;
     border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-h2 {
-    margin-top: 0;
-}
-
-label {
-    font-weight: bold;
-}
-
-input {
+input, textarea {
     width: 100%;
     padding: 8px;
     margin-top: 5px;
@@ -43,20 +34,17 @@ input {
 }
 
 button {
-    padding: 10px 15px;
-    font-size: 14px;
+    padding: 10px;
     margin-right: 10px;
     cursor: pointer;
 }
 
 .error {
     color: red;
-    font-size: 13px;
 }
 
 .success {
     color: green;
-    font-size: 14px;
 }
 
 canvas {
@@ -64,9 +52,9 @@ canvas {
 }
 
 .footer {
-    margin-top: 25px;
+    margin-top: 20px;
     font-size: 12px;
-    color: #666;
+    color: gray;
 }
 
 </style>
@@ -79,15 +67,20 @@ canvas {
 
 <h2>Z-Wave SmartStart QR Generator</h2>
 
-<label>Device Specific Key (DSK)</label>
+<label>Provisioning String (Factory "90..." OR ZWS2DSK format)</label>
 
-<input
-    id="dsk"
-    placeholder="12345-67890-12345-67890-12345-67890-12345-67890"
-    oninput="formatDSK(this)"
->
+<textarea
+    id="qrInput"
+    rows="3"
+    placeholder="Example:
+900111873003646434913609885522405516530556171343867100100179303072022001114000040027700258
 
-<div id="dskError" class="error"></div>
+OR
+
+ZWS2DSK:64643-49136-09885-52240-55165-30556-17134-38671"
+></textarea>
+
+<div id="error" class="error"></div>
 
 <button onclick="generateQR()">Generate QR</button>
 
@@ -107,125 +100,96 @@ Version: v1.0
 
 const APP_VERSION = "v1.0";
 
+let currentQR = "";
+
 console.log("SmartStart QR Generator Version:", APP_VERSION);
 
-let currentQRText = "";
 
+// ===========================
+// Validate provisioning string
+// ===========================
 
-// ============================
-// Auto format DSK while typing
-// ============================
-
-function formatDSK(input)
+function validateInput(input)
 {
 
-    let value = input.value.replace(/\D/g, "");
+    if (!input)
+        return "Input cannot be empty";
 
-    value = value.substring(0, 40);
-
-    let groups = value.match(/.{1,5}/g);
-
-    input.value = groups ? groups.join("-") : value;
-
-}
-
-
-// ============================
-// Validate DSK format
-// ============================
-
-function validateDSK(dsk)
-{
-
-    const regex = /^(\d{5}-){7}\d{5}$/;
-
-    if (!regex.test(dsk))
-        return "DSK must contain exactly 8 groups of 5 digits";
-
-    const parts = dsk.split("-");
-
-    for (let part of parts)
+    // Factory format
+    if (input.startsWith("90"))
     {
+        if (!/^[0-9]+$/.test(input))
+            return "Factory QR must contain only digits";
 
-        const num = parseInt(part);
+        if (input.length < 50)
+            return "Factory QR string too short";
 
-        if (num < 0 || num > 65535)
-            return "Each group must be between 00000 and 65535";
-
+        return null;
     }
 
-    return null;
+    // ZWS2DSK format
+    if (input.startsWith("ZWS2DSK:"))
+    {
 
+        const dsk = input.substring(7);
+
+        const regex = /^(\d{5}-){7}\d{5}$/;
+
+        if (!regex.test(dsk))
+            return "Invalid DSK format";
+
+        return null;
+    }
+
+    return "Must start with 90 or ZWS2DSK:";
 }
 
 
-// ============================
-// Build SmartStart QR string
-// ============================
-
-function buildQRString(dsk)
-{
-
-    return "ZWS2DSK:" + dsk;
-
-}
-
-
-// ============================
+// ===========================
 // Generate QR
-// ============================
+// ===========================
 
 function generateQR()
 {
 
-    clearErrors();
+    clearError();
 
-    const dsk = document.getElementById("dsk").value.trim();
+    const input = document.getElementById("qrInput").value.trim();
 
-    const error = validateDSK(dsk);
+    const error = validateInput(input);
 
     if (error)
     {
-
-        document.getElementById("dskError").innerText = error;
-
-        document.getElementById("status").innerHTML =
-            "<span class='error'>Please fix the error above</span>";
-
+        showError(error);
         return;
-
     }
 
-    currentQRText = buildQRString(dsk);
+    currentQR = input;
 
     QRCode.toCanvas(
         document.getElementById("qrCanvas"),
-        currentQRText,
+        input,
         { width: 300 }
     );
 
     document.getElementById("status").innerHTML =
         "<span class='success'>QR generated successfully</span>";
 
-    console.log("QR Text:", currentQRText);
-
+    console.log("Generated QR:", input);
 }
 
 
-// ============================
-// Download QR image
-// ============================
+// ===========================
+// Download QR
+// ===========================
 
 function downloadQR()
 {
 
-    if (!currentQRText)
+    if (!currentQR)
     {
-
-        alert("Please generate QR first");
-
+        alert("Generate QR first");
         return;
-
     }
 
     const canvas = document.getElementById("qrCanvas");
@@ -237,19 +201,21 @@ function downloadQR()
     link.href = canvas.toDataURL();
 
     link.click();
-
 }
 
 
-// ============================
-// Clear errors
-// ============================
+// ===========================
+// Error handling
+// ===========================
 
-function clearErrors()
+function showError(msg)
 {
+    document.getElementById("error").innerText = msg;
+}
 
-    document.getElementById("dskError").innerText = "";
-
+function clearError()
+{
+    document.getElementById("error").innerText = "";
 }
 
 </script>
