@@ -126,6 +126,14 @@ canvas {
             </div>
         </div>
 
+        <div>
+            <label>Supported Protocols (TLV type 4)</label>
+            <div class="checks">
+                <label><input id="protoZWave" type="checkbox" checked> Z-Wave (0)</label>
+                <label><input id="protoZWaveLR" type="checkbox"> Z-Wave LR (1)</label>
+            </div>
+        </div>
+
         <div class="row3">
             <div>
                 <label for="genericDeviceClass">Generic Device Class (0-255)</label>
@@ -257,6 +265,13 @@ function tlv(type, critical, data) {
     return pad2(typeCritical) + pad2(data.length) + data;
 }
 
+function encodeSupportedProtocols() {
+    let mask = 0;
+    if (document.getElementById("protoZWave").checked) mask |= (1 << 0);
+    if (document.getElementById("protoZWaveLR").checked) mask |= (1 << 1);
+    return mask;
+}
+
 function buildPayloadWithoutChecksum(dsk) {
     const requestedKeys = encodeRequestedSecurityClasses();
     const dskDigits = dsk.replace(/-/g, "");
@@ -273,12 +288,16 @@ function buildPayloadWithoutChecksum(dsk) {
 
     const productTypeData = pad5(deviceClasses) + pad5(installerIconType);
     const productIdData = pad5(manufacturerId) + pad5(productType) + pad5(productId) + pad5(appVersionNum);
+    const supportedProtocolsMask = encodeSupportedProtocols();
 
     const productTypeTlv = tlv(0, true, productTypeData);
     const productIdTlv = tlv(1, true, productIdData);
+    const supportedProtocolsTlv = supportedProtocolsMask > 0
+        ? tlv(4, false, pad3(supportedProtocolsMask))
+        : "";
 
     return (
-        "90" + "01" + "00000" + pad3(requestedKeys) + dskDigits + productTypeTlv + productIdTlv
+        "90" + "01" + "00000" + pad3(requestedKeys) + dskDigits + productTypeTlv + productIdTlv + supportedProtocolsTlv
     );
 }
 
