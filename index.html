@@ -1,302 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Z-Wave SmartStart QR Generator</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<title>Z-Wave SmartStart QR Generator</title>
 
-    <style>
-        body {
-            font-family: Arial;
-            padding: 20px;
-            background: #f4f4f4;
-        }
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
-        .container {
-            background: white;
-            padding: 20px;
-            width: 500px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
+<style>
 
-        input {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
+body {
+    font-family: Arial;
+    background: #f4f4f4;
+    padding: 20px;
+}
 
-        button {
-            padding: 10px 15px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-right: 10px;
-        }
+.container {
+    background: white;
+    padding: 20px;
+    max-width: 500px;
+    border-radius: 8px;
+}
 
-        #qrCanvas {
-            margin-top: 20px;
-        }
+input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+}
 
-        .error {
-            color: red;
-        }
+button {
+    padding: 10px;
+    margin-right: 10px;
+}
 
-        .success {
-            color: green;
-        }
-    </style>
+.error {
+    color: red;
+}
+
+.success {
+    color: green;
+}
+
+canvas {
+    margin-top: 20px;
+}
+
+</style>
 
 </head>
-
 <body>
 
-    <div class="container">
+<div class="container">
 
-        <h2>Z-Wave SmartStart QR Generator</h2>
+<h2>Z-Wave SmartStart QR Generator</h2>
 
-        <label>DSK (xxxxx-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx)</label>
-        <input id="dsk" oninput="formatDSK(this)">
-        <div id="dskError" class="error"></div>
+<label>Device Specific Key (DSK)</label>
 
-        <label>Manufacturer ID (4 hex digits)</label>
-        <input id="manufacturerId" value="045A">
-        <div id="manufacturerError" class="error"></div>
+<input id="dsk"
+       placeholder="12345-67890-12345-67890-12345-67890-12345-67890"
+       oninput="formatDSK(this)">
 
-        <label>Product Type (4 hex digits)</label>
-        <input id="productType" value="0004">
-        <div id="productTypeError" class="error"></div>
+<div id="dskError" class="error"></div>
 
-        <label>Product ID (4 hex digits)</label>
-        <input id="productId" value="0362">
-        <div id="productIdError" class="error"></div>
+<button onclick="generateQR()">Generate QR</button>
 
-        <button onclick="generateQR()">Generate QR</button>
-        <button onclick="downloadQR()">Download QR</button>
+<button onclick="downloadQR()">Download QR</button>
 
-        <div id="status"></div>
+<div id="status"></div>
 
-        <canvas id="qrCanvas"></canvas>
+<canvas id="qrCanvas"></canvas>
 
-    </div>
+</div>
 
-    <script>
+<script>
 
-        let currentPayload = "";
+let currentQRText = "";
 
 
-        // ==========================
-        // Format DSK automatically
-        // ==========================
+// =========================
+// Auto format DSK
+// =========================
 
-        function formatDSK(input) {
+function formatDSK(input)
+{
+    let value = input.value.replace(/\D/g, "");
 
-            let value = input.value.replace(/\D/g, "");
+    value = value.substring(0, 40);
 
-            value = value.substring(0, 40);
+    let groups = value.match(/.{1,5}/g);
 
-            let groups = value.match(/.{1,5}/g);
+    input.value = groups ? groups.join("-") : value;
+}
 
-            input.value = groups ? groups.join("-") : value;
-        }
 
+// =========================
+// Validate DSK
+// =========================
 
-        // ==========================
-        // Validate DSK
-        // ==========================
+function validateDSK(dsk)
+{
+    const regex = /^(\d{5}-){7}\d{5}$/;
 
-        function validateDSK(dsk) {
+    if (!regex.test(dsk))
+        return "Invalid DSK format";
 
-            const regex = /^(\d{5}-){7}\d{5}$/;
+    const parts = dsk.split("-");
 
-            if (!regex.test(dsk)) {
-                return "DSK must be exactly 8 groups of 5 digits";
-            }
+    for (let part of parts)
+    {
+        const num = parseInt(part);
 
-            const parts = dsk.split("-");
+        if (num < 0 || num > 65535)
+            return "Each group must be 00000–65535";
+    }
 
-            for (let part of parts) {
+    return null;
+}
 
-                const num = parseInt(part);
 
-                if (num < 0 || num > 65535) {
-                    return "Each DSK group must be between 00000 and 65535";
-                }
-            }
+// =========================
+// Build correct QR string
+// =========================
 
-            return null;
-        }
+function buildQRString(dsk)
+{
+    return "ZWS2DSK:" + dsk;
+}
 
 
-        // ==========================
-        // Validate hex field
-        // ==========================
+// =========================
+// Generate QR
+// =========================
 
-        function validateHex(value, fieldName) {
+function generateQR()
+{
+    clearErrors();
 
-            if (!/^[0-9A-Fa-f]{4}$/.test(value)) {
-                return fieldName + " must be exactly 4 hex digits";
-            }
+    const dsk = document.getElementById("dsk").value.trim();
 
-            return null;
-        }
+    const error = validateDSK(dsk);
 
+    if (error)
+    {
+        document.getElementById("dskError").innerText = error;
 
-        // ==========================
-        // Build SmartStart payload
-        // ==========================
+        document.getElementById("status").innerHTML =
+            "<span class='error'>Fix errors first</span>";
 
-        function buildSmartStartPayload(dsk, manufacturerId, productType, productId) {
+        return;
+    }
 
-            const prefix = "90";
-            const version = "01";
-            const keyFlags = "32";
+    currentQRText = buildQRString(dsk);
 
-            return prefix +
-                version +
-                keyFlags +
-                dsk +
-                manufacturerId.toUpperCase() +
-                productType.toUpperCase() +
-                productId.toUpperCase();
-        }
+    QRCode.toCanvas(
+        document.getElementById("qrCanvas"),
+        currentQRText,
+        { width: 300 }
+    );
 
+    document.getElementById("status").innerHTML =
+        "<span class='success'>QR generated successfully</span>";
 
-        // ==========================
-        // Generate QR
-        // ==========================
+    console.log("QR Text:", currentQRText);
+}
 
-        function generateQR() {
 
-            clearErrors();
+// =========================
+// Download QR
+// =========================
 
-            const dskInput = document.getElementById("dsk").value.trim();
+function downloadQR()
+{
+    if (!currentQRText)
+    {
+        alert("Generate QR first");
+        return;
+    }
 
-            const manufacturerId = document.getElementById("manufacturerId").value.trim();
+    const canvas = document.getElementById("qrCanvas");
 
-            const productType = document.getElementById("productType").value.trim();
+    const link = document.createElement("a");
 
-            const productId = document.getElementById("productId").value.trim();
+    link.download = "zwave-smartstart-qr.png";
 
-            let hasError = false;
+    link.href = canvas.toDataURL();
 
+    link.click();
+}
 
-            const dskError = validateDSK(dskInput);
 
-            if (dskError) {
+// =========================
+// Clear errors
+// =========================
 
-                document.getElementById("dskError").innerText = dskError;
+function clearErrors()
+{
+    document.getElementById("dskError").innerText = "";
+}
 
-                hasError = true;
-            }
-
-
-            const manufacturerError = validateHex(manufacturerId, "Manufacturer ID");
-
-            if (manufacturerError) {
-
-                document.getElementById("manufacturerError").innerText = manufacturerError;
-
-                hasError = true;
-            }
-
-
-            const productTypeError = validateHex(productType, "Product Type");
-
-            if (productTypeError) {
-
-                document.getElementById("productTypeError").innerText = productTypeError;
-
-                hasError = true;
-            }
-
-
-            const productIdError = validateHex(productId, "Product ID");
-
-            if (productIdError) {
-
-                document.getElementById("productIdError").innerText = productIdError;
-
-                hasError = true;
-            }
-
-
-            if (hasError) {
-
-                document.getElementById("status").innerHTML =
-                    "<span class='error'>Fix errors before generating QR</span>";
-
-                return;
-            }
-
-
-            const dsk = dskInput.replace(/-/g, "");
-
-            currentPayload = buildSmartStartPayload(
-                dsk,
-                manufacturerId,
-                productType,
-                productId
-            );
-
-
-            QRCode.toCanvas(document.getElementById("qrCanvas"), currentPayload, {
-                width: 300
-            });
-
-
-            document.getElementById("status").innerHTML =
-                "<span class='success'>QR generated successfully</span>";
-
-        }
-
-
-        // ==========================
-        // Download QR
-        // ==========================
-
-        function downloadQR() {
-
-            if (!currentPayload) {
-
-                alert("Generate QR first");
-
-                return;
-            }
-
-            const canvas = document.getElementById("qrCanvas");
-
-            const link = document.createElement("a");
-
-            link.download = "smartstart_qr.png";
-
-            link.href = canvas.toDataURL();
-
-            link.click();
-        }
-
-
-        // ==========================
-        // Clear errors
-        // ==========================
-
-        function clearErrors() {
-
-            document.getElementById("dskError").innerText = "";
-
-            document.getElementById("manufacturerError").innerText = "";
-
-            document.getElementById("productTypeError").innerText = "";
-
-            document.getElementById("productIdError").innerText = "";
-
-        }
-
-    </script>
+</script>
 
 </body>
-
 </html>
