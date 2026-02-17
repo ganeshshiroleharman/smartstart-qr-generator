@@ -47,6 +47,12 @@ canvas {
     margin-top: 20px;
 }
 
+.footer {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #666;
+}
+
 </style>
 
 </head>
@@ -72,9 +78,17 @@ canvas {
 
 <canvas id="qrCanvas"></canvas>
 
+<div class="footer">
+Version: v1.0
+</div>
+
 </div>
 
 <script>
+
+const APP_VERSION = "v1.0";
+
+console.log("SmartStart QR Generator Version:", APP_VERSION);
 
 let currentQRText = "";
 
@@ -163,7 +177,8 @@ function generateQR()
     document.getElementById("status").innerHTML =
         "<span class='success'>QR generated successfully</span>";
 
-    console.log("QR Text:", currentQRText);
+    console.log("Generated QR Text:", currentQRText);
+    console.log("App Version:", APP_VERSION);
 }
 
 
