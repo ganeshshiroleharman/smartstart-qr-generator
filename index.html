@@ -1,225 +1,331 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Z-Wave SmartStart QR Generator</title>
-
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-
 <style>
-
 body {
-    font-family: Arial;
-    background: #f4f4f4;
-    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 16px;
 }
-
 .container {
-    background: white;
-    padding: 20px;
-    max-width: 600px;
-    border-radius: 8px;
+    max-width: 720px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
-
-input, textarea {
+h2 {
+    margin-top: 0;
+}
+.grid {
+    display: grid;
+    gap: 10px;
+}
+.row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.row3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+label {
+    font-size: 12px;
+    color: #1f2937;
+    display: block;
+    margin-bottom: 4px;
+}
+input[type="text"],
+input[type="number"] {
     width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    margin-bottom: 15px;
-    font-size: 14px;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
 }
-
+.checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 6px 0;
+}
 button {
-    padding: 10px;
-    margin-right: 10px;
+    padding: 9px 14px;
+    border-radius: 6px;
+    border: 0;
     cursor: pointer;
 }
-
+#generateBtn {
+    background: #1d4ed8;
+    color: #fff;
+}
+#downloadBtn {
+    background: #111827;
+    color: #fff;
+}
+.actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
 .error {
-    color: red;
+    color: #b91c1c;
+    margin-top: 8px;
+    font-size: 13px;
 }
-
-.success {
-    color: green;
-}
-
-canvas {
-    margin-top: 20px;
-}
-
-.footer {
-    margin-top: 20px;
+.hint {
+    color: #4b5563;
     font-size: 12px;
-    color: gray;
 }
-
+.output {
+    margin-top: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 12px;
+    word-break: break-all;
+}
+canvas {
+    margin-top: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+@media (max-width: 640px) {
+    .row2, .row3 {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
-
 </head>
-
 <body>
-
 <div class="container">
+    <h2>SmartStart QR Generator (From DSK)</h2>
+    <div class="grid">
+        <div>
+            <label for="dsk">DSK (8 groups x 5 digits)</label>
+            <input id="dsk" type="text" placeholder="12345-23456-34567-45678-56789-01234-12345-23456" oninput="onDskInput(this)">
+        </div>
 
-<h2>Z-Wave SmartStart QR Generator</h2>
+        <div>
+            <label>Requested Security Classes</label>
+            <div class="checks">
+                <label><input id="s2Unauth" type="checkbox" checked> S2 Unauthenticated</label>
+                <label><input id="s2Auth" type="checkbox" checked> S2 Authenticated</label>
+                <label><input id="s2Access" type="checkbox"> S2 Access Control</label>
+                <label><input id="s0Legacy" type="checkbox"> S0 Legacy</label>
+            </div>
+        </div>
 
-<label>Provisioning String (Factory "90..." OR ZWS2DSK format)</label>
+        <div class="row3">
+            <div>
+                <label for="genericDeviceClass">Generic Device Class (0-255)</label>
+                <input id="genericDeviceClass" type="number" min="0" max="255" value="16">
+            </div>
+            <div>
+                <label for="specificDeviceClass">Specific Device Class (0-255)</label>
+                <input id="specificDeviceClass" type="number" min="0" max="255" value="1">
+            </div>
+            <div>
+                <label for="installerIconType">Installer Icon Type (0-65535)</label>
+                <input id="installerIconType" type="number" min="0" max="65535" value="179">
+            </div>
+        </div>
 
-<textarea
-    id="qrInput"
-    rows="3"
-    placeholder="Example:
-900111873003646434913609885522405516530556171343867100100179303072022001114000040027700258
+        <div class="row2">
+            <div>
+                <label for="manufacturerId">Manufacturer ID (0-65535)</label>
+                <input id="manufacturerId" type="number" min="0" max="65535" value="1114">
+            </div>
+            <div>
+                <label for="productType">Product Type (0-65535)</label>
+                <input id="productType" type="number" min="0" max="65535" value="4">
+            </div>
+        </div>
 
-OR
+        <div class="row2">
+            <div>
+                <label for="productId">Product ID (0-65535)</label>
+                <input id="productId" type="number" min="0" max="65535" value="277">
+            </div>
+            <div>
+                <label for="appVersion">Application Version (major.minor, each 0-255)</label>
+                <input id="appVersion" type="text" value="1.2">
+            </div>
+        </div>
 
-ZWS2DSK:64643-49136-09885-52240-55165-30556-17134-38671"
-></textarea>
+        <div class="hint">
+            Uses zwave-js QR layout: `90` + version(2) + checksum(5) + keys(3) + DSK(40) + TLVs.
+            Checksum is SHA-1 over payload from keys field (char index 9) to end.
+        </div>
 
-<div id="error" class="error"></div>
-
-<button onclick="generateQR()">Generate QR</button>
-
-<button onclick="downloadQR()">Download QR</button>
-
-<div id="status"></div>
-
-<canvas id="qrCanvas"></canvas>
-
-<div class="footer">
-Version: v1.0
-</div>
-
+        <div id="error" class="error"></div>
+        <div class="actions">
+            <button id="generateBtn" onclick="generate()">Generate QR</button>
+            <button id="downloadBtn" onclick="download()">Download PNG</button>
+        </div>
+        <canvas id="qr"></canvas>
+        <div id="output" class="output"></div>
+    </div>
 </div>
 
 <script>
-
-const APP_VERSION = "v1.0";
-
 let currentQR = "";
 
-console.log("SmartStart QR Generator Version:", APP_VERSION);
-
-
-// ===========================
-// Validate provisioning string
-// ===========================
-
-function validateInput(input)
-{
-
-    if (!input)
-        return "Input cannot be empty";
-
-    // Factory format
-    if (input.startsWith("90"))
-    {
-        if (!/^[0-9]+$/.test(input))
-            return "Factory QR must contain only digits";
-
-        if (input.length < 50)
-            return "Factory QR string too short";
-
-        return null;
-    }
-
-    // ZWS2DSK format
-    if (input.startsWith("ZWS2DSK:"))
-    {
-
-        const dsk = input.substring(7);
-
-        const regex = /^(\d{5}-){7}\d{5}$/;
-
-        if (!regex.test(dsk))
-            return "Invalid DSK format";
-
-        return null;
-    }
-
-    return "Must start with 90 or ZWS2DSK:";
+function onDskInput(input) {
+    let v = input.value
+        .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-")
+        .replace(/\D/g, "")
+        .slice(0, 40);
+    const parts = v.match(/.{1,5}/g);
+    input.value = parts ? parts.join("-") : v;
 }
 
+function normalizeDSK(raw) {
+    const trimmed = (raw || "").trim().replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
+    if (!trimmed) return null;
+    if (/^(\d{5}-){7}\d{5}$/.test(trimmed)) return trimmed;
+    const digits = trimmed.replace(/\D/g, "");
+    if (digits.length !== 40) return null;
+    return digits.match(/.{1,5}/g).join("-");
+}
 
-// ===========================
-// Generate QR
-// ===========================
+function validateDskBlocks(dsk) {
+    const blocks = dsk.split("-");
+    return blocks.length === 8 && blocks.every((b) => {
+        const n = Number(b);
+        return Number.isInteger(n) && n >= 0 && n <= 65535;
+    });
+}
 
-function generateQR()
-{
+function pad2(n) {
+    return String(n).padStart(2, "0");
+}
 
-    clearError();
+function pad3(n) {
+    return String(n).padStart(3, "0");
+}
 
-    const input = document.getElementById("qrInput").value.trim();
+function pad5(n) {
+    return String(n).padStart(5, "0");
+}
 
-    const error = validateInput(input);
-
-    if (error)
-    {
-        showError(error);
-        return;
+function readInt(id, min, max) {
+    const value = Number(document.getElementById(id).value);
+    if (!Number.isInteger(value) || value < min || value > max) {
+        throw new Error(`${id} must be an integer in range ${min}-${max}`);
     }
+    return value;
+}
 
-    currentQR = input;
+function parseAppVersion(text) {
+    const parts = String(text || "").trim().split(".");
+    if (parts.length !== 2) {
+        throw new Error("appVersion must be in format major.minor");
+    }
+    const major = Number(parts[0]);
+    const minor = Number(parts[1]);
+    if (
+        !Number.isInteger(major) || !Number.isInteger(minor)
+        || major < 0 || major > 255 || minor < 0 || minor > 255
+    ) {
+        throw new Error("appVersion major/minor must be 0-255");
+    }
+    return (major << 8) | minor;
+}
 
-    QRCode.toCanvas(
-        document.getElementById("qrCanvas"),
-        input,
-        { width: 300 }
+function encodeRequestedSecurityClasses() {
+    let mask = 0;
+    if (document.getElementById("s2Unauth").checked) mask |= (1 << 0);
+    if (document.getElementById("s2Auth").checked) mask |= (1 << 1);
+    if (document.getElementById("s2Access").checked) mask |= (1 << 2);
+    if (document.getElementById("s0Legacy").checked) mask |= (1 << 7);
+    return mask;
+}
+
+function tlv(type, critical, data) {
+    const typeCritical = (type << 1) | (critical ? 1 : 0);
+    return pad2(typeCritical) + pad2(data.length) + data;
+}
+
+function buildPayloadWithoutChecksum(dsk) {
+    const requestedKeys = encodeRequestedSecurityClasses();
+    const dskDigits = dsk.replace(/-/g, "");
+
+    const genericDeviceClass = readInt("genericDeviceClass", 0, 255);
+    const specificDeviceClass = readInt("specificDeviceClass", 0, 255);
+    const installerIconType = readInt("installerIconType", 0, 65535);
+    const manufacturerId = readInt("manufacturerId", 0, 65535);
+    const productType = readInt("productType", 0, 65535);
+    const productId = readInt("productId", 0, 65535);
+    const appVersionNum = parseAppVersion(document.getElementById("appVersion").value);
+
+    const deviceClasses = (genericDeviceClass << 8) | specificDeviceClass;
+
+    const productTypeData = pad5(deviceClasses) + pad5(installerIconType);
+    const productIdData = pad5(manufacturerId) + pad5(productType) + pad5(productId) + pad5(appVersionNum);
+
+    const productTypeTlv = tlv(0, true, productTypeData);
+    const productIdTlv = tlv(1, true, productIdData);
+
+    return (
+        "90" + "01" + "00000" + pad3(requestedKeys) + dskDigits + productTypeTlv + productIdTlv
     );
-
-    document.getElementById("status").innerHTML =
-        "<span class='success'>QR generated successfully</span>";
-
-    console.log("Generated QR:", input);
 }
 
+async function computeChecksum(qrWithDummyChecksum) {
+    const checksumInput = qrWithDummyChecksum.slice(9);
+    const digestBytes = await crypto.subtle.digest(
+        "SHA-1",
+        new TextEncoder().encode(checksumInput)
+    );
+    const view = new Uint8Array(digestBytes);
+    return (view[0] << 8) | view[1];
+}
 
-// ===========================
-// Download QR
-// ===========================
+async function generate() {
+    const errorEl = document.getElementById("error");
+    const outputEl = document.getElementById("output");
+    errorEl.textContent = "";
+    outputEl.textContent = "";
 
-function downloadQR()
-{
+    try {
+        const normalized = normalizeDSK(document.getElementById("dsk").value);
+        if (!normalized) throw new Error("Invalid DSK format");
+        if (!validateDskBlocks(normalized)) {
+            throw new Error("Each DSK block must be 00000-65535");
+        }
+        document.getElementById("dsk").value = normalized;
 
-    if (!currentQR)
-    {
-        alert("Generate QR first");
-        return;
+        const withDummyChecksum = buildPayloadWithoutChecksum(normalized);
+        const checksum = await computeChecksum(withDummyChecksum);
+        const finalQR = withDummyChecksum.slice(0, 4) + pad5(checksum) + withDummyChecksum.slice(9);
+
+        currentQR = finalQR;
+        QRCode.toCanvas(document.getElementById("qr"), finalQR, { width: 300 });
+        outputEl.textContent = finalQR;
+    } catch (e) {
+        errorEl.textContent = e && e.message ? e.message : String(e);
     }
+}
 
-    const canvas = document.getElementById("qrCanvas");
-
+function download() {
+    if (!currentQR) return;
+    const canvas = document.getElementById("qr");
     const link = document.createElement("a");
-
-    link.download = "zwave-smartstart-qr-v1.0.png";
-
-    link.href = canvas.toDataURL();
-
+    link.download = "smartstart-qr.png";
+    link.href = canvas.toDataURL("image/png");
     link.click();
 }
-
-
-// ===========================
-// Error handling
-// ===========================
-
-function showError(msg)
-{
-    document.getElementById("error").innerText = msg;
-}
-
-function clearError()
-{
-    document.getElementById("error").innerText = "";
-}
-
 </script>
-
 </body>
-
 </html>
